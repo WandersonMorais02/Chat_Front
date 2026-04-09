@@ -52,7 +52,6 @@ export function ChatPage() {
     setSelectedChat,
     setMessages,
     setTypingUsers,
-    loadChats,
   });
 
   const {

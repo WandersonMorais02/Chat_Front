@@ -53,9 +53,7 @@ export function useChatSocket({
 
     socket.emit("user:online", user.id);
 
-    // =============================
     // PRESENCE
-    // =============================
     const handlePresenceUpdate = ({
       userId,
       isOnline,
@@ -94,9 +92,7 @@ export function useChatSocket({
       );
     };
 
-    // =============================
     // MESSAGE NEW
-    // =============================
     const handleMessageNew = (message: Message) => {
       if (selectedChatRef.current?.id === message.chatId) {
         setMessages((prev) => {
@@ -115,9 +111,7 @@ export function useChatSocket({
       }));
     };
 
-    // =============================
-    // CHAT UPDATE (🔥 ESSENCIAL)
-    // =============================
+    // CHAT UPDATE
     const handleChatUpdate = ({
       chatId,
       message,
@@ -160,9 +154,7 @@ export function useChatSocket({
       );
     };
 
-    // =============================
-    // READ UPDATE (🔥 ✓✓ azul)
-    // =============================
+    // READ UPDATE
     const handleMessageReadUpdate = ({
       chatId,
       userId,
@@ -189,9 +181,7 @@ export function useChatSocket({
       );
     };
 
-    // =============================
     // TYPING
-    // =============================
     const handleTypingUpdate = ({
       chatId,
       userId,
@@ -226,9 +216,7 @@ export function useChatSocket({
       }
     };
 
-    // =============================
     // EVENTS
-    // =============================
     socket.on("presence:update", handlePresenceUpdate);
     socket.on("message:new", handleMessageNew);
     socket.on("chat:update", handleChatUpdate);
