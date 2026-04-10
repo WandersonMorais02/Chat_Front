@@ -856,6 +856,7 @@ a {
 
   .chat-input {
     padding: 12px;
+    margin-bottom: 0.8em;
   }
 
   .chat-input button {
