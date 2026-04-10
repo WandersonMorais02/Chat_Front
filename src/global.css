@@ -783,13 +783,25 @@ a {
   padding: 24px;
 }
 
-/* =========================
-   MOBILE NAV
-========================= */
+ .mobile-bottom-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 66px;
+    background: #202c33;
+    border-top: 1px solid #2a3942;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    z-index: 50;
+  }
 
-/* .mobile-bottom-nav {
-  display: none;
-} */
+  .mobile-bottom-nav button {
+    border: none;
+    background: transparent;
+    color: #8696a0;
+    font-weight: 600;
+  }
 
 /* =========================
    RESPONSIVE
