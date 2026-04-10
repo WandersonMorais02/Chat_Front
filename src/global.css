@@ -8,6 +8,7 @@ html,
 body,
 #root {
   height: 100%;
+  overflow: hidden;
 }
 
 body {
@@ -102,6 +103,7 @@ a {
   display: grid;
   grid-template-columns: 360px 1fr;
   background: #0b141a;
+  overflow: hidden;
 }
 
 .sidebar {
@@ -111,6 +113,7 @@ a {
   flex-direction: column;
   min-width: 0;
   overflow: hidden;
+  height: 100%;
 }
 
 .chat-main {
@@ -118,6 +121,8 @@ a {
   flex-direction: column;
   min-width: 0;
   background: #0b141a;
+  height: 100%;
+  overflow: hidden;
 }
 
 /* =========================
@@ -284,6 +289,7 @@ a {
   flex-direction: column;
   overflow-y: auto;
   min-height: 0;
+  flex: 1;
 }
 
 .user-item {
@@ -608,6 +614,7 @@ a {
   flex-direction: column;
   gap: 8px;
   scroll-behavior: smooth;
+  min-height: 0;
 }
 
 /* =========================
@@ -624,6 +631,17 @@ a {
   font-size: 14px;
   line-height: 1.4;
   word-break: break-word;
+}
+
+.messages::-webkit-scrollbar,
+.user-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.messages::-webkit-scrollbar-thumb,
+.user-list::-webkit-scrollbar-thumb {
+  background: #2a3942;
+  border-radius: 10px;
 }
 
 .message::after {
