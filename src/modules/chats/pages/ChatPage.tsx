@@ -8,6 +8,8 @@ import { SidebarHeader } from "../components/SidebarHeader";
 import { useChatActions } from "../hooks/useChatActions";
 import { useChatData } from "../hooks/useChatData";
 import { useChatSocket } from "../hooks/useChatSocket";
+import { socket } from "../../../shared/lib/socket";
+
 import type {
   AppUser,
   ChatListItem,
@@ -31,7 +33,12 @@ export function ChatPage() {
   const [typingUsers, setTypingUsers] = useState<TypingState>({});
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const apiUrl = useMemo(() => "http://localhost:3333", []);
+
+  // 🔥 produção (ajustado)
+  const apiUrl = useMemo(
+    () => "https://chatapi.littleevents.site",
+    []
+  );
 
   const {
     contacts,
@@ -86,12 +93,39 @@ export function ChatPage() {
     typingUsers[selectedTargetUser.id]?.isTyping === true &&
     typingUsers[selectedTargetUser.id]?.chatId === selectedChat.id;
 
+  // =============================
+  // SCROLL
+  // =============================
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
       behavior: "smooth",
       block: "end",
     });
   }, [messages, isTypingInCurrentChat]);
+
+  // =============================
+  // 🔥 VISIBILITY (PUSH INTELIGENTE)
+  // =============================
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (!selectedChat) return;
+
+      if (document.visibilityState === "visible") {
+        socket.emit("chat:active", { chatId: selectedChat.id });
+      } else {
+        socket.emit("chat:inactive");
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange
+      );
+    };
+  }, [selectedChat]);
 
   function renderSidebarContent() {
     if (activeTab === "chats") {
@@ -187,6 +221,7 @@ export function ChatPage() {
           onClick={() => {
             setActiveTab("chats");
             setSelectedChat(null);
+            socket.emit("chat:inactive"); // 🔥 importante
           }}
         >
           Chats
@@ -198,6 +233,7 @@ export function ChatPage() {
           onClick={() => {
             setActiveTab("contacts");
             setSelectedChat(null);
+            socket.emit("chat:inactive"); // 🔥 importante
           }}
         >
           Contatos
@@ -209,6 +245,7 @@ export function ChatPage() {
           onClick={() => {
             setActiveTab("profile");
             setSelectedChat(null);
+            socket.emit("chat:inactive"); // 🔥 importante
           }}
         >
           Perfil

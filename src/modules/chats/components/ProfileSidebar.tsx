@@ -1,6 +1,10 @@
 import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../../../shared/lib/axios";
+import {
+  syncPushSubscriptionWithApi,
+  unsubscribeFromPush,
+} from "../../../shared/lib/push";
 import type { AppUser } from "../types/chat";
 import { getDisplayName } from "../utils/chatHelpers";
 
@@ -18,27 +22,47 @@ export function ProfileSidebar({
   apiUrl,
 }: ProfileSidebarProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [name, setName] = useState(user?.name || "");
-  const [phone, setPhone] = useState(user?.phone || "");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // 🔔 PUSH
+  const [pushLoading, setPushLoading] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+
+  // 🔁 sincroniza dados
   useEffect(() => {
     setName(user?.name || "");
     setPhone(user?.phone || "");
   }, [user]);
 
+  // 🔎 verifica se já tem push ativo
+  useEffect(() => {
+    async function checkPush() {
+      if (!("serviceWorker" in navigator)) return;
+
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+
+      setPushEnabled(!!sub);
+    }
+
+    checkPush();
+  }, []);
+
+  // 🧠 preview imagem
   const previewUrl = useMemo(() => {
-    if (avatarFile) {
-      return URL.createObjectURL(avatarFile);
-    }
-
-    if (user?.avatar) {
-      return `${apiUrl}${user.avatar}`;
-    }
-
+    if (avatarFile) return URL.createObjectURL(avatarFile);
+    if (user?.avatar) return `${apiUrl}${user.avatar}`;
     return "https://via.placeholder.com/96";
   }, [avatarFile, user?.avatar, apiUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (avatarFile) URL.revokeObjectURL(previewUrl);
+    };
+  }, [avatarFile, previewUrl]);
 
   function openModal() {
     setName(user?.name || "");
@@ -48,12 +72,54 @@ export function ProfileSidebar({
   }
 
   function closeModal() {
+    if (saving) return;
     setIsModalOpen(false);
     setAvatarFile(null);
   }
 
+  // =========================
+  // 🔔 ATIVAR PUSH
+  // =========================
+  async function handleEnablePush() {
+    try {
+      setPushLoading(true);
+
+      await syncPushSubscriptionWithApi();
+
+      setPushEnabled(true);
+      alert("🔔 Notificações ativadas!");
+    } catch (error: any) {
+      alert(error?.message || "Erro ao ativar notificações");
+    } finally {
+      setPushLoading(false);
+    }
+  }
+
+  // =========================
+  // 🔕 DESATIVAR PUSH
+  // =========================
+  async function handleDisablePush() {
+    try {
+      setPushLoading(true);
+
+      await unsubscribeFromPush();
+
+      setPushEnabled(false);
+      alert("🔕 Notificações desativadas");
+    } catch (error: any) {
+      alert(error?.message || "Erro ao desativar notificações");
+    } finally {
+      setPushLoading(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+
+    if (!name.trim()) {
+      alert("Nome é obrigatório");
+      return;
+    }
 
     try {
       setSaving(true);
@@ -75,14 +141,11 @@ export function ProfileSidebar({
       await refreshMe();
       closeModal();
     } catch (error) {
-      console.error("Erro ao atualizar perfil:", error);
-
       if (axios.isAxiosError(error)) {
         alert(error.response?.data?.message || "Erro ao atualizar perfil");
-        return;
+      } else {
+        alert("Erro ao atualizar perfil");
       }
-
-      alert("Erro ao atualizar perfil");
     } finally {
       setSaving(false);
     }
@@ -123,47 +186,52 @@ export function ProfileSidebar({
           </div>
 
           <div className="profile-actions">
-            <button type="button" onClick={openModal}>
-              Editar perfil
-            </button>
+            <button onClick={openModal}>Editar perfil</button>
 
-            <button type="button" onClick={refreshMe}>
-              Atualizar perfil
-            </button>
+            <button onClick={refreshMe}>Atualizar perfil</button>
 
-            <button type="button" onClick={logout}>
-              Sair
-            </button>
+            {/* 🔔 PUSH BUTTON */}
+            {!pushEnabled ? (
+              <button
+                onClick={handleEnablePush}
+                disabled={pushLoading}
+              >
+                {pushLoading ? "Ativando..." : "🔔 Ativar notificações"}
+              </button>
+            ) : (
+              <button
+                onClick={handleDisablePush}
+                disabled={pushLoading}
+              >
+                {pushLoading ? "Desativando..." : "🔕 Desativar notificações"}
+              </button>
+            )}
+
+            <button onClick={logout}>Sair</button>
           </div>
         </div>
       </div>
 
       {isModalOpen && (
         <div className="profile-modal-overlay" onClick={closeModal}>
-          <div
-            className="profile-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="profile-modal" onClick={(e) => e.stopPropagation()}>
             <div className="profile-modal-header">
               <h3>Editar perfil</h3>
-              <button
-                type="button"
-                className="profile-modal-close"
-                onClick={closeModal}
-              >
+              <button onClick={closeModal} disabled={saving}>
                 ✕
               </button>
             </div>
 
             <form className="profile-form" onSubmit={handleSubmit}>
               <div className="profile-avatar-edit">
-                <img src={previewUrl} alt="Preview do avatar" />
+                <img src={previewUrl} />
 
-                <label className="profile-file-label">
+                <label>
                   Trocar foto
                   <input
                     type="file"
                     accept="image/*"
+                    disabled={saving}
                     onChange={(e) =>
                       setAvatarFile(e.target.files?.[0] || null)
                     }
@@ -171,33 +239,25 @@ export function ProfileSidebar({
                 </label>
               </div>
 
-              <div className="profile-form-group">
-                <label>Nome</label>
-                <input
-                  type="text"
-                  placeholder="Seu nome"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </div>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Nome"
+              />
 
-              <div className="profile-form-group">
-                <label>Telefone</label>
-                <input
-                  type="text"
-                  placeholder="Seu telefone"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                />
-              </div>
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Telefone"
+              />
 
-              <div className="profile-form-actions">
+              <div>
                 <button type="button" onClick={closeModal}>
                   Cancelar
                 </button>
 
                 <button type="submit" disabled={saving}>
-                  {saving ? "Salvando..." : "Salvar alterações"}
+                  {saving ? "Salvando..." : "Salvar"}
                 </button>
               </div>
             </form>

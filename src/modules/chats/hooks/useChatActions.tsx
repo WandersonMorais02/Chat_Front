@@ -38,15 +38,7 @@ export function useChatActions({
   loadChats,
   loadContacts,
 }: UseChatActionsParams) {
-  function updateChatLastMessage(
-    chatId: string,
-    lastMessage: {
-      id: string;
-      content: string;
-      createdAt: string;
-      senderId: string;
-    }
-  ) {
+  function updateChatLastMessage(chatId: string, lastMessage: any) {
     setChats((prev) =>
       sortChats(
         prev.map((chat) =>
@@ -92,16 +84,14 @@ export function useChatActions({
       setSelectedChat(matchedChat);
 
       socket.emit("chat:join", matchedChat.id);
+      socket.emit("chat:active", { chatId: matchedChat.id });
 
       const { data: messagesData } = await api.get(
         `/messages/${matchedChat.id}`
       );
 
-      const loadedMessages = messagesData as Message[];
+      setMessages(messagesData);
 
-      setMessages(loadedMessages);
-
-      // marcar como lido
       if (user) {
         socket.emit("message:read", {
           chatId: matchedChat.id,
@@ -109,11 +99,7 @@ export function useChatActions({
         });
       }
     } catch (error) {
-      console.error("Erro ao abrir chat:", error);
-
-      if (axios.isAxiosError(error)) {
-        alert(error.response?.data?.message || "Erro ao abrir conversa");
-      }
+      console.error(error);
     }
   }
 
@@ -125,12 +111,11 @@ export function useChatActions({
       setSelectedChat(chat);
 
       socket.emit("chat:join", chat.id);
+      socket.emit("chat:active", { chatId: chat.id });
 
       const { data } = await api.get(`/messages/${chat.id}`);
 
-      const loadedMessages = data as Message[];
-
-      setMessages(loadedMessages);
+      setMessages(data);
 
       if (user) {
         socket.emit("message:read", {
@@ -139,12 +124,12 @@ export function useChatActions({
         });
       }
     } catch (error) {
-      console.error("Erro ao abrir chat:", error);
+      console.error(error);
     }
   }
 
   // =============================
-  // 🔥 SEND MESSAGE (SEM DUPLICAR)
+  // SEND MESSAGE
   // =============================
   function sendMessage(content: string) {
     if (!content.trim() || !selectedChat || !user) return;
@@ -165,7 +150,6 @@ export function useChatActions({
       userId: user.id,
     });
 
-    // 🔥 só atualiza sidebar (não adiciona mensagem!)
     updateChatLastMessage(selectedChat.id, {
       id: `preview-${Date.now()}`,
       content: messageContent,
@@ -194,8 +178,10 @@ export function useChatActions({
     });
   }
 
+  // 🔥 IMPORTANTE
   function handleBackToList() {
     handleStopTyping();
+    socket.emit("chat:inactive");
     setSelectedChat(null);
     setMessages([]);
     setContent("");
@@ -213,12 +199,8 @@ export function useChatActions({
       });
 
       setFoundUser(data);
-    } catch (error) {
+    } catch {
       setFoundUser(null);
-
-      if (axios.isAxiosError(error) && error.response?.status !== 404) {
-        alert(error.response?.data?.message || "Erro ao buscar usuário");
-      }
     }
   }
 
@@ -231,15 +213,8 @@ export function useChatActions({
 
       await loadContacts();
       await loadChats();
-
-      alert("Contato adicionado com sucesso");
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        alert(error.response?.data?.message || "Erro ao adicionar contato");
-        return;
-      }
-
-      alert("Erro ao adicionar contato");
+      console.error(error);
     }
   }
 
