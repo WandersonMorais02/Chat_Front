@@ -5,7 +5,7 @@ import { AuthProvider } from "./app/providers/AuthProvider";
 import "./global.css";
 
 // @ts-ignore: O TypeScript às vezes demora a reconhecer módulos virtuais do Vite
-import { registerSW } from "vite-plugin-pwa/register";
+import { registerSW } from "virtual:pwa-register";
 
 // Registra o Service Worker para habilitar o PWA
 registerSW({
